@@ -1,19 +1,33 @@
-import { Response } from 'express';
-import { prisma } from '../index';
-import { AuthRequest } from '../middleware/auth';
+import { Response } from "express";
+import { prisma } from "../index";
+import { AuthRequest } from "../middleware/auth";
 
-export const getUsers = async (req: AuthRequest, res: Response) => {
+export const getUsers = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { page = 1, limit = 10, search } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const where = search ? {
-      OR: [
-        { firstName: { contains: String(search), mode: 'insensitive' as const } },
-        { lastName: { contains: String(search), mode: 'insensitive' as const } },
-        { email: { contains: String(search), mode: 'insensitive' as const } }
-      ]
-    } : {};
+    const where = search
+      ? {
+          OR: [
+            {
+              username: {
+                contains: String(search),
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              email: {
+                contains: String(search),
+                mode: "insensitive" as const,
+              },
+            },
+          ],
+        }
+      : {};
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -21,17 +35,18 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
         skip,
         take: Number(limit),
         select: {
-          id: true,
+          userid: true,
           email: true,
-          firstName: true,
-          lastName: true,
-          avatar: true,
-          createdAt: true,
-          updatedAt: true
+          username: true,
+          contact: true,
+          profilepic: true,
+          roles: true,
+          created_at: true,
+          updated_at: true,
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { created_at: "desc" },
       }),
-      prisma.user.count({ where })
+      prisma.user.count({ where }),
     ]);
 
     res.json({
@@ -42,117 +57,130 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
           total,
           page: Number(page),
           limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit))
-        }
-      }
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      },
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    console.error("Get users error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error getting users'
+      error: "Server error getting users",
     });
   }
 };
 
-export const getUserById = async (req: AuthRequest, res: Response) => {
+export const getUserById = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: { userid: Number(id) },
       select: {
-        id: true,
+        userid: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        avatar: true,
-        createdAt: true,
-        updatedAt: true
-      }
+        username: true,
+        contact: true,
+        profilepic: true,
+        roles: true,
+        created_at: true,
+        updated_at: true,
+      },
     });
 
     if (!user) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: "User not found",
       });
+      return;
     }
 
     res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
-    console.error('Get user by ID error:', error);
+    console.error("Get user by ID error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error getting user'
+      error: "Server error getting user",
     });
   }
 };
 
-export const updateUser = async (req: AuthRequest, res: Response) => {
+export const updateUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, avatar } = req.body;
+    const { username, contact, profilepic } = req.body;
 
     const user = await prisma.user.update({
-      where: { id },
+      where: { userid: Number(id) },
       data: {
-        ...(firstName && { firstName }),
-        ...(lastName && { lastName }),
-        ...(avatar && { avatar })
+        ...(username && { username }),
+        ...(contact && { contact }),
+        ...(profilepic && { profilepic }),
       },
       select: {
-        id: true,
+        userid: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        avatar: true,
-        createdAt: true,
-        updatedAt: true
-      }
+        username: true,
+        contact: true,
+        profilepic: true,
+        roles: true,
+        created_at: true,
+        updated_at: true,
+      },
     });
 
     res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    console.error("Update user error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error updating user'
+      error: "Server error updating user",
     });
   }
 };
 
-export const deleteUser = async (req: AuthRequest, res: Response) => {
+export const deleteUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
     // Prevent users from deleting themselves
-    if (id === req.user!.id) {
-      return res.status(400).json({
+    if (Number(id) === req.user!.id) {
+      res.status(400).json({
         success: false,
-        error: 'Cannot delete your own account'
+        error: "Cannot delete your own account",
       });
+      return;
     }
 
     await prisma.user.delete({
-      where: { id }
+      where: { userid: Number(id) },
     });
 
     res.json({
       success: true,
-      message: 'User deleted successfully'
+      message: "User deleted successfully",
     });
   } catch (error) {
-    console.error('Delete user error:', error);
+    console.error("Delete user error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error deleting user'
+      error: "Server error deleting user",
     });
   }
 };

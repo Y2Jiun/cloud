@@ -1,22 +1,21 @@
-import * as React from 'react';
-import type { Metadata } from 'next';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
+"use client";
 
-import { config } from '@/config';
-import { Notifications } from '@/components/dashboard/settings/notifications';
-import { UpdatePasswordForm } from '@/components/dashboard/settings/update-password-form';
+import * as React from "react";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { useTranslation } from "react-i18next";
 
-export const metadata = { title: `Settings | Dashboard | ${config.site.name}` } satisfies Metadata;
+import { Preferences } from "@/components/dashboard/settings/preferences";
 
 export default function Page(): React.JSX.Element {
-  return (
-    <Stack spacing={3}>
-      <div>
-        <Typography variant="h4">Settings</Typography>
-      </div>
-      <Notifications />
-      <UpdatePasswordForm />
-    </Stack>
-  );
+	const { t } = useTranslation();
+
+	return (
+		<Stack spacing={3}>
+			<div>
+				<Typography variant="h4">{t("settings.title")}</Typography>
+			</div>
+			<Preferences />
+		</Stack>
+	);
 }

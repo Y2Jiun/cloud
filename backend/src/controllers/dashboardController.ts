@@ -1,12 +1,15 @@
-import { Response } from 'express';
-import { prisma } from '../index';
-import { AuthRequest } from '../middleware/auth';
+import { Response } from "express";
+import { prisma } from "../index";
+import { AuthRequest } from "../middleware/auth";
 
-export const getDashboardStats = async (req: AuthRequest, res: Response) => {
+export const getDashboardStats = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const [totalUsers, totalCustomers] = await Promise.all([
       prisma.user.count(),
-      prisma.customer.count()
+      prisma.customer.count(),
     ]);
 
     // Mock data for revenue and orders (you can implement these based on your business logic)
@@ -19,78 +22,84 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         users: 12.5,
         customers: 8.3,
         revenue: 15.2,
-        orders: 6.7
-      }
+        orders: 6.7,
+      },
     };
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
-    console.error('Get dashboard stats error:', error);
+    console.error("Get dashboard stats error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error getting dashboard stats'
+      error: "Server error getting dashboard stats",
     });
   }
 };
 
-export const getRecentActivity = async (req: AuthRequest, res: Response) => {
+export const getRecentActivity = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     // Get recent users and customers for activity feed
     const [recentUsers, recentCustomers] = await Promise.all([
       prisma.user.findMany({
         take: 5,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { created_at: "desc" },
         select: {
-          id: true,
-          firstName: true,
-          lastName: true,
+          userid: true,
+          username: true,
           email: true,
-          createdAt: true
-        }
+          created_at: true,
+        },
       }),
       prisma.customer.findMany({
         take: 5,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         select: {
           id: true,
           name: true,
           email: true,
-          createdAt: true
-        }
-      })
+          createdAt: true,
+        },
+      }),
     ]);
 
     // Format activity data
     const activities = [
-      ...recentUsers.map(user => ({
-        id: `user-${user.id}`,
-        type: 'user_registered' as const,
-        description: `${user.firstName} ${user.lastName} registered`,
-        timestamp: user.createdAt,
-        userId: user.id
+      ...recentUsers.map((user) => ({
+        id: `user-${user.userid}`,
+        type: "user_registered" as const,
+        description: `${user.username} registered`,
+        timestamp: user.created_at,
+        userId: user.userid,
       })),
-      ...recentCustomers.map(customer => ({
+      ...recentCustomers.map((customer) => ({
         id: `customer-${customer.id}`,
-        type: 'customer_created' as const,
+        type: "customer_created" as const,
         description: `New customer ${customer.name} added`,
         timestamp: customer.createdAt,
-        customerId: customer.id
-      }))
-    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-     .slice(0, 10);
+        customerId: customer.id,
+      })),
+    ]
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
+      .slice(0, 10);
 
     res.json({
       success: true,
-      data: activities
+      data: activities,
     });
   } catch (error) {
-    console.error('Get recent activity error:', error);
+    console.error("Get recent activity error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error getting recent activity'
+      error: "Server error getting recent activity",
     });
   }
 };

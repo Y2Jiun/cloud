@@ -1,98 +1,185 @@
-'use client';
+"use client";
 
-import type { User } from '@/types/user';
-
-function generateToken(): string {
-  const arr = new Uint8Array(12);
-  globalThis.crypto.getRandomValues(arr);
-  return Array.from(arr, (v) => v.toString(16).padStart(2, '0')).join('');
-}
-
-const user = {
-  id: 'USR-000',
-  avatar: '/assets/avatar.png',
-  firstName: 'Sofia',
-  lastName: 'Rivers',
-  email: 'sofia@devias.io',
-} satisfies User;
+import type { User } from "@/types/user";
+import { apiClient } from "@/lib/api-client";
 
 export interface SignUpParams {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+	firstName: string;
+	lastName: string;
+	name: string;
+	email: string;
+	password: string;
+	username?: string; // Optional, will be generated if not provided
 }
 
 export interface SignInWithOAuthParams {
-  provider: 'google' | 'discord';
+	provider: "google" | "discord";
 }
 
 export interface SignInWithPasswordParams {
-  email: string;
-  password: string;
+	email: string;
+	password: string;
 }
 
 export interface ResetPasswordParams {
-  email: string;
+	email: string;
+}
+
+export interface VerifyOtpParams {
+	email: string;
+	otp: string;
+}
+
+export interface NewPasswordParams {
+	token: string;
+	newPassword: string;
 }
 
 class AuthClient {
-  async signUp(_: SignUpParams): Promise<{ error?: string }> {
-    // Make API request
+	async signUp(params: SignUpParams): Promise<{ error?: string }> {
+		try {
+			const { firstName, lastName, name, email, password, username } = params;
 
-    // We do not handle the API, so we'll just generate a token and store it in localStorage.
-    const token = generateToken();
-    localStorage.setItem('custom-auth-token', token);
+			// Use provided username or create one from first and last name
+			const finalUsername = username || `${firstName.trim()}${lastName.trim()}`.toLowerCase();
 
-    return {};
-  }
+			const response = await apiClient.register({
+				email,
+				password,
+				username: finalUsername,
+				name, // Send the combined name
+			});
 
-  async signInWithOAuth(_: SignInWithOAuthParams): Promise<{ error?: string }> {
-    return { error: 'Social authentication not implemented' };
-  }
+			if (!response.success) {
+				return { error: response.error || "Registration failed" };
+			}
 
-  async signInWithPassword(params: SignInWithPasswordParams): Promise<{ error?: string }> {
-    const { email, password } = params;
+			// Store the token
+			if (response.data?.token) {
+				localStorage.setItem("auth-token", response.data.token);
+			}
 
-    // Make API request
+			return {};
+		} catch (error) {
+			return { error: "Registration failed" };
+		}
+	}
 
-    // We do not handle the API, so we'll check if the credentials match with the hardcoded ones.
-    if (email !== 'sofia@devias.io' || password !== 'Secret1') {
-      return { error: 'Invalid credentials' };
-    }
+	async signInWithOAuth(_: SignInWithOAuthParams): Promise<{ error?: string }> {
+		return { error: "Social authentication not implemented" };
+	}
 
-    const token = generateToken();
-    localStorage.setItem('custom-auth-token', token);
+	async signInWithPassword(params: SignInWithPasswordParams): Promise<{ error?: string }> {
+		try {
+			const { email, password } = params;
 
-    return {};
-  }
+			const response = await apiClient.login(email, password);
 
-  async resetPassword(_: ResetPasswordParams): Promise<{ error?: string }> {
-    return { error: 'Password reset not implemented' };
-  }
+			if (!response.success) {
+				return { error: response.error || "Invalid credentials" };
+			}
 
-  async updatePassword(_: ResetPasswordParams): Promise<{ error?: string }> {
-    return { error: 'Update reset not implemented' };
-  }
+			// Store the token
+			if (response.data?.token) {
+				localStorage.setItem("auth-token", response.data.token);
+			}
 
-  async getUser(): Promise<{ data?: User | null; error?: string }> {
-    // Make API request
+			return {};
+		} catch (error) {
+			console.error("Login error:", error);
+			return { error: "Login failed" };
+		}
+	}
 
-    // We do not handle the API, so just check if we have a token in localStorage.
-    const token = localStorage.getItem('custom-auth-token');
+	async resetPassword(params: ResetPasswordParams): Promise<{ error?: string }> {
+		try {
+			const { email } = params;
+			const response = await apiClient.sendPasswordResetOtp(email);
 
-    if (!token) {
-      return { data: null };
-    }
+			if (!response.success) {
+				return { error: response.error || "Failed to send OTP" };
+			}
 
-    return { data: user };
-  }
+			return {};
+		} catch (error) {
+			return { error: "Failed to send OTP" };
+		}
+	}
 
-  async signOut(): Promise<{ error?: string }> {
-    localStorage.removeItem('custom-auth-token');
+	async verifyOtp(params: VerifyOtpParams): Promise<{ error?: string; data?: { token: string } }> {
+		try {
+			const { email, otp } = params;
+			const response = await apiClient.verifyPasswordResetOtp(email, otp);
 
-    return {};
-  }
+			if (!response.success) {
+				return { error: response.error || "Invalid OTP" };
+			}
+
+			return { data: response.data };
+		} catch (error) {
+			return { error: "OTP verification failed" };
+		}
+	}
+
+	async updatePassword(params: NewPasswordParams): Promise<{ error?: string }> {
+		try {
+			const { token, newPassword } = params;
+			const response = await apiClient.resetPasswordWithToken(token, newPassword);
+
+			if (!response.success) {
+				return { error: response.error || "Failed to update password" };
+			}
+
+			return {};
+		} catch (error) {
+			return { error: "Password update failed" };
+		}
+	}
+
+	async getUser(): Promise<{ data?: User | null; error?: string }> {
+		try {
+			const token = localStorage.getItem("auth-token");
+
+			if (!token) {
+				return { data: null };
+			}
+
+			const response = await apiClient.getProfile();
+
+			if (!response.success) {
+				// Token might be invalid, remove it
+				localStorage.removeItem("auth-token");
+				return { data: null };
+			}
+
+			// Transform backend user data to frontend User type
+			const backendUser = response.data;
+			const user: User = {
+				id: backendUser.userid?.toString() || backendUser.id,
+				name:
+					backendUser.name ||
+					backendUser.username ||
+					`${backendUser.firstName || ""} ${backendUser.lastName || ""}`.trim(),
+				email: backendUser.email,
+				avatar: backendUser.profilepic || backendUser.avatar || "/assets/avatar.png",
+				username: backendUser.username,
+				roles: backendUser.roles,
+				contact: backendUser.contact,
+			};
+
+			return { data: user };
+		} catch (error) {
+			// Remove invalid token
+			localStorage.removeItem("auth-token");
+			return { data: null };
+		}
+	}
+
+	async signOut(): Promise<{ error?: string }> {
+		localStorage.removeItem("auth-token");
+
+		return {};
+	}
 }
 
 export const authClient = new AuthClient();

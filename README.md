@@ -1,6 +1,6 @@
-# Full-Stack Dashboard Application
+# Material Kit React Dashboard
 
-A complete full-stack application with React.js frontend, Node.js backend, PlanetScale MySQL database, and Cloudinary image uploads.
+A modern, full-stack dashboard application built with React, Node.js, and MySQL with complete authentication system including password reset functionality.
 
 ## Project Structure
 
@@ -94,12 +94,29 @@ This will start both:
 
 ### Backend (.env)
 
-```
-DATABASE_URL="your-planetscale-connection-string"
-JWT_SECRET="your-jwt-secret"
-CLOUDINARY_CLOUD_NAME="your-cloudinary-cloud-name"
-CLOUDINARY_API_KEY="your-cloudinary-api-key"
-CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+
+# Database Configuration
+DATABASE_URL="mysql://username:password@localhost:3306/cloud"
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-here
+JWT_EXPIRE=7d
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+
+# Email Configuration (Gmail)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-16-character-app-password
 ```
 
 ### Frontend (.env)
@@ -108,14 +125,84 @@ CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
 VITE_API_URL="http://localhost:5000/api"
 ```
 
-## Features
+## 🚀 Features
 
-- User authentication (register, login, logout)
-- Dashboard with analytics
-- User management
-- Image upload functionality
-- Responsive design
-- Type-safe API communication
+- **Complete Authentication System**: Register, Login, Logout
+- **Password Reset with OTP**: Email-based password recovery
+- **User Profile Management**: Update profile with image upload
+- **Email Integration**: Gmail SMTP for password reset emails
+- **Secure**: JWT authentication, bcrypt password hashing
+- **Modern UI**: Material-UI components with responsive design
+- **File Upload**: Cloudinary integration for image uploads
+- **Type-safe**: Full TypeScript implementation
+
+## 📧 Gmail Setup for Password Reset
+
+For the forgot password feature to work, you need to set up a Gmail App Password:
+
+1. **Enable 2-Step Verification:**
+
+   - Go to [Google Account Settings](https://myaccount.google.com/)
+   - Click "Security" → "2-Step Verification"
+   - Follow the setup process if not already enabled
+
+2. **Create App Password:**
+
+   - In Security settings, click "App passwords"
+   - Select "Mail" and "Other (custom name)"
+   - Enter "Dashboard App" as the name
+   - Copy the 16-character password to your `.env` file
+
+3. **Update .env file:**
+   ```env
+   EMAIL_USER=your-actual-email@gmail.com
+   EMAIL_PASS=your-16-character-app-password
+   ```
+
+## 🔧 Development Notes
+
+### Email Service
+
+- In development mode, if email credentials are not configured, OTPs will be logged to the console
+- Check the backend terminal for OTP codes during testing
+
+### Password Reset Flow
+
+1. User enters email → Backend sends OTP to email
+2. User enters OTP → Backend verifies and returns reset token
+3. User sets new password → Backend updates password with token
+
+## 🚀 For Other Developers
+
+When someone clones your repository, they need to:
+
+1. **Clone and install:**
+
+   ```bash
+   git clone <your-repo-url>
+   cd material-kit-react-main
+   npm run install:all
+   ```
+
+2. **Set up environment:**
+
+   ```bash
+   cp backend/.env.example backend/.env
+   # Then fill in their own values
+   ```
+
+3. **Required accounts/services:**
+
+   - MySQL database (local or cloud)
+   - Gmail account with App Password
+   - Cloudinary account for image uploads
+
+4. **Database setup:**
+   ```bash
+   cd backend
+   npx prisma generate
+   npx prisma db push
+   ```
 
 ## Development Setup
 

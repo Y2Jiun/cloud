@@ -1,27 +1,33 @@
-import { Response } from 'express';
-import { prisma } from '../index';
-import { AuthRequest } from '../middleware/auth';
+import { Response } from "express";
+import { prisma } from "../index";
+import { AuthRequest } from "../middleware/auth";
 
 export const getCustomers = async (req: AuthRequest, res: Response) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const where = search ? {
-      OR: [
-        { name: { contains: String(search), mode: 'insensitive' as const } },
-        { email: { contains: String(search), mode: 'insensitive' as const } }
-      ]
-    } : {};
+    const where = search
+      ? {
+          OR: [
+            {
+              name: { contains: String(search), mode: "insensitive" as const },
+            },
+            {
+              email: { contains: String(search), mode: "insensitive" as const },
+            },
+          ],
+        }
+      : {};
 
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
         where,
         skip,
         take: Number(limit),
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.customer.count({ where })
+      prisma.customer.count({ where }),
     ]);
 
     res.json({
@@ -32,56 +38,64 @@ export const getCustomers = async (req: AuthRequest, res: Response) => {
           total,
           page: Number(page),
           limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit))
-        }
-      }
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      },
     });
   } catch (error) {
-    console.error('Get customers error:', error);
+    console.error("Get customers error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error getting customers'
+      error: "Server error getting customers",
     });
   }
 };
 
-export const getCustomerById = async (req: AuthRequest, res: Response) => {
+export const getCustomerById = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
     const customer = await prisma.customer.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!customer) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
-        error: 'Customer not found'
+        error: "Customer not found",
       });
+      return;
     }
 
     res.json({
       success: true,
-      data: customer
+      data: customer,
     });
   } catch (error) {
-    console.error('Get customer by ID error:', error);
+    console.error("Get customer by ID error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error getting customer'
+      error: "Server error getting customer",
     });
   }
 };
 
-export const createCustomer = async (req: AuthRequest, res: Response) => {
+export const createCustomer = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { name, email, phone, avatar, address } = req.body;
 
     if (!name || !email) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
-        error: 'Name and email are required'
+        error: "Name and email are required",
       });
+      return;
     }
 
     const customer = await prisma.customer.create({
@@ -90,19 +104,19 @@ export const createCustomer = async (req: AuthRequest, res: Response) => {
         email,
         phone,
         avatar,
-        address
-      }
+        address,
+      },
     });
 
     res.status(201).json({
       success: true,
-      data: customer
+      data: customer,
     });
   } catch (error) {
-    console.error('Create customer error:', error);
+    console.error("Create customer error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error creating customer'
+      error: "Server error creating customer",
     });
   }
 };
@@ -119,19 +133,19 @@ export const updateCustomer = async (req: AuthRequest, res: Response) => {
         ...(email && { email }),
         ...(phone && { phone }),
         ...(avatar && { avatar }),
-        ...(address && { address })
-      }
+        ...(address && { address }),
+      },
     });
 
     res.json({
       success: true,
-      data: customer
+      data: customer,
     });
   } catch (error) {
-    console.error('Update customer error:', error);
+    console.error("Update customer error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error updating customer'
+      error: "Server error updating customer",
     });
   }
 };
@@ -141,18 +155,18 @@ export const deleteCustomer = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
     await prisma.customer.delete({
-      where: { id }
+      where: { id },
     });
 
     res.json({
       success: true,
-      message: 'Customer deleted successfully'
+      message: "Customer deleted successfully",
     });
   } catch (error) {
-    console.error('Delete customer error:', error);
+    console.error("Delete customer error:", error);
     res.status(500).json({
       success: false,
-      error: 'Server error deleting customer'
+      error: "Server error deleting customer",
     });
   }
 };

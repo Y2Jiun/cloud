@@ -10,22 +10,27 @@ import {
 // Configure Cloudinary
 configureCloudinary();
 
-export const uploadImage = async (req: AuthRequest, res: Response) => {
+export const uploadImage = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: "No file uploaded",
       });
+      return;
     }
 
     // Validate file
     const validation = validateImageFile(req.file);
     if (!validation.isValid) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: validation.error,
       });
+      return;
     }
 
     // Upload to Cloudinary using utility function
@@ -44,15 +49,19 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const deleteImage = async (req: AuthRequest, res: Response) => {
+export const deleteImage = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { publicId } = req.params;
 
     if (!publicId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: "Public ID is required",
       });
+      return;
     }
 
     // Delete from Cloudinary using utility function

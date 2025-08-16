@@ -8,18 +8,20 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
-  relationMode = "prisma"
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userid     Int      @id @default(autoincrement())
+  username   String   @unique
+  name       String?
+  email      String   @unique
+  password   String
+  profilepic String?
+  contact    String?
+  roles      Int      @default(3)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  last_login DateTime?
 
   @@map("users")
 }
@@ -47,4 +49,17 @@ model Activity {
   metadata    Json?
 
   @@map("activities")
+}
+
+model PasswordResetOtp {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  token     String?  // Reset token generated after OTP verification
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("password_reset_otps")
 }
