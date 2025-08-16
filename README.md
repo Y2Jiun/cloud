@@ -268,7 +268,7 @@ EMAIL_PASS=your-16-character-app-password
 # 4. Add them to your .env file
 ```
 
-#### 7. Database Migration
+#### 7. Database Setup & Data Import
 
 ```bash
 cd backend
@@ -276,12 +276,38 @@ cd backend
 # Generate Prisma client
 npx prisma generate
 
-# Push database schema
+# Create database tables
 npx prisma db push
+```
 
-# Optional: Seed with sample data
+**Choose your data option:**
+
+**Option A: Fresh Start with Sample Data (Recommended)**
+
+```bash
+# Creates sample users and demo data
 npx prisma db seed
 ```
+
+_Includes: Admin user (admin@example.com/admin123), Demo user, Sample customers_
+
+**Option B: Import Actual Development Data**
+
+```bash
+# Import the exported data (includes real users/data)
+mysql -u root -p cloud < cloud_export.sql
+```
+
+_Includes: All your actual development data, real users, real activities_
+
+**Option C: Start Completely Empty**
+
+```bash
+# Skip seeding - empty database with just table structure
+# (You'll need to register new users through the app)
+```
+
+_Includes: Just empty tables, no users or data_
 
 #### 8. Start the Application
 
