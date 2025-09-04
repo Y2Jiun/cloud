@@ -1,0 +1,415 @@
+================================================================================
+                    DATABASE SCHEMA DOCUMENTATION
+                    Scam Reporting System
+================================================================================
+
+TABLE OVERVIEW & COLUMN DETAILS
+================================================================================
+
+1. USERS TABLE
+   Table Name: users
+   Primary Key: userid (INT, AUTO_INCREMENT)
+   Purpose: User accounts and authentication
+   
+   Columns:
+   - userid: INT (Primary Key, Auto Increment)
+   - username: STRING (Unique)
+   - name: STRING (Optional)
+   - email: STRING (Unique)
+   - password: STRING (Hashed)
+   - profilepic: STRING (Optional, file path)
+   - contact: STRING (Optional)
+   - roles: INT (Default: 3) [1=Admin, 2=Legal Officer, 3=Regular User]
+   - created_at: DATETIME (Auto: now())
+   - updated_at: DATETIME (Auto: updated)
+   - last_login: DATETIME (Optional)
+
+2. CUSTOMERS TABLE
+   Table Name: customers
+   Primary Key: id (STRING, CUID)
+   Purpose: Customer management (legacy/standalone)
+   
+   Columns:
+   - id: STRING (Primary Key, CUID)
+   - name: STRING
+   - email: STRING (Unique)
+   - phone: STRING (Optional)
+   - avatar: STRING (Optional)
+   - address: JSON (Optional)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+3. ACTIVITIES TABLE
+   Table Name: activities
+   Primary Key: id (STRING, CUID)
+   Purpose: Activity logging and audit trail
+   
+   Columns:
+   - id: STRING (Primary Key, CUID)
+   - type: STRING (Activity type)
+   - description: STRING (Activity description)
+   - timestamp: DATETIME (Auto: now())
+   - userId: STRING (Optional, Foreign Key)
+   - customerId: STRING (Optional, Foreign Key)
+   - metadata: JSON (Optional, additional data)
+
+4. PASSWORD_RESET_OTPS TABLE
+   Table Name: password_reset_otps
+   Primary Key: id (STRING, CUID)
+   Purpose: OTP verification for password reset
+   
+   Columns:
+   - id: STRING (Primary Key, CUID)
+   - email: STRING (User email)
+   - otp: STRING (6-digit OTP code)
+   - token: STRING (Optional, reset token)
+   - expiresAt: DATETIME (OTP expiration time)
+   - verified: BOOLEAN (Default: false)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+5. SCAM_REPORTS TABLE
+   Table Name: scam_reports
+   Primary Key: id (INT, AUTO_INCREMENT)
+   Purpose: User-submitted scam reports
+   
+   Columns:
+   - id: INT (Primary Key, Auto Increment)
+   - title: STRING (Report title)
+   - description: TEXT (Report details)
+   - scammerInfo: TEXT (Scammer information)
+   - platform: STRING (Platform where scam occurred)
+   - status: STRING (Default: "pending") [pending, approved, rejected]
+   - adminNotes: TEXT (Optional, admin feedback)
+   - userId: INT (Foreign Key → users.userid)
+   - legalCaseId: INT (Optional, Foreign Key → legal_cases.id)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+6. SCAM_ALERTS TABLE
+   Table Name: scam_alerts
+   Primary Key: id (INT, AUTO_INCREMENT)
+   Purpose: Legal officer created scam alerts
+   
+   Columns:
+   - id: INT (Primary Key, Auto Increment)
+   - title: STRING (Alert title)
+   - description: TEXT (Alert details)
+   - severity: STRING (Default: "MEDIUM") [HIGH, MEDIUM, LOW]
+   - targetAudience: STRING (Default: "ALL") [ALL, SPECIFIC_GROUPS]
+   - status: STRING (Default: "pending") [pending, approved, rejected]
+   - adminNotes: TEXT (Optional, admin feedback)
+   - isActive: BOOLEAN (Default: true)
+   - expiresAt: DATETIME (Optional, alert expiration)
+   - createdBy: INT (Foreign Key → users.userid, Legal Officer)
+   - approvedBy: INT (Optional, Foreign Key → users.userid, Admin)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+7. COMMENTS TABLE
+   Table Name: comments
+   Primary Key: id (INT, AUTO_INCREMENT)
+   Purpose: Comments on scam alerts and legal cases
+   
+   Columns:
+   - id: INT (Primary Key, Auto Increment)
+   - content: TEXT (Comment text)
+   - status: STRING (Default: "pending") [pending, approved, rejected]
+   - userId: INT (Foreign Key → users.userid)
+   - alertId: INT (Optional, Foreign Key → scam_alerts.id)
+   - caseId: INT (Optional, Foreign Key → legal_cases.id)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+8. LEGAL_CASES TABLE
+   Table Name: legal_cases
+   Primary Key: id (INT, AUTO_INCREMENT)
+   Purpose: Legal case management
+   
+   Columns:
+   - id: INT (Primary Key, Auto Increment)
+   - title: STRING (Case title)
+   - description: TEXT (Case details)
+   - caseNumber: STRING (Unique case identifier)
+   - status: STRING (Default: "pending") [pending, approved, rejected, closed]
+   - priority: STRING (Default: "MEDIUM") [HIGH, MEDIUM, LOW]
+   - adminNotes: TEXT (Optional, admin feedback)
+   - isActive: BOOLEAN (Default: true)
+   - createdBy: INT (Foreign Key → users.userid, Legal Officer)
+   - approvedBy: INT (Optional, Foreign Key → users.userid, Admin)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+9. EVIDENCE TABLE
+   Table Name: evidence
+   Primary Key: id (INT, AUTO_INCREMENT)
+   Purpose: Evidence files for legal cases
+   
+   Columns:
+   - id: INT (Primary Key, Auto Increment)
+   - title: STRING (Evidence title)
+   - description: STRING (Optional, evidence description)
+   - fileUrl: STRING (Optional, file path/URL)
+   - caseId: INT (Foreign Key → legal_cases.id)
+   - createdAt: DATETIME (Auto: now())
+   - updatedAt: DATETIME (Auto: updated)
+
+10. LEGAL_CASE_DOCUMENTS TABLE
+    Table Name: legal_case_documents
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: Document attachments for legal cases
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - title: STRING (Document title)
+    - description: STRING (Optional, document description)
+    - fileName: STRING (Original file name)
+    - fileUrl: STRING (File path/URL)
+    - fileType: STRING (File type: pdf, doc, docx, etc.)
+    - fileSize: INT (File size in bytes)
+    - caseId: INT (Foreign Key → legal_cases.id)
+    - uploadedBy: INT (Foreign Key → users.userid, Legal Officer)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+11. NOTIFICATIONS TABLE
+    Table Name: notifications
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: System notifications and announcements
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - title: STRING (Notification title)
+    - description: TEXT (Notification content)
+    - roles: INT (Default: 3) [1=Admin, 2=Legal Officer, 3=All Users]
+    - type: INT (Default: 1) [1=Notification, 2=Announcement, 3=Alert]
+    - priority: STRING (Default: "medium") [low, medium, high, urgent]
+    - status: STRING (Default: "active") [active, inactive, expired]
+    - expiresAt: DATETIME (Optional, notification expiration)
+    - createdBy: INT (Foreign Key → users.userid, Admin)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+12. USER_NOTIFICATION_PREFERENCES TABLE
+    Table Name: user_notification_preferences
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: User notification settings (soft delete)
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - userId: INT (Foreign Key → users.userid)
+    - notificationId: INT (Foreign Key → notifications.id)
+    - isHidden: BOOLEAN (Default: false)
+    - hiddenAt: DATETIME (Auto: now())
+    
+    Unique Constraint: [userId, notificationId]
+
+13. ROLE_CHANGE_REQUESTS TABLE
+    Table Name: role_change_requests
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: User requests for role upgrades
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - userId: INT (Foreign Key → users.userid)
+    - requestedRole: INT (Default: 2) [2=Legal Officer]
+    - status: STRING (Default: "pending") [pending, approved, rejected]
+    - reason: TEXT (Optional, user's reason)
+    - adminNotes: TEXT (Optional, admin feedback)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+14. FAQS TABLE
+    Table Name: faqs
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: FAQ and help articles
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - title: STRING (FAQ title)
+    - content: TEXT (FAQ content)
+    - category: STRING (Default: "GUIDE") [GUIDE, FAQ, TUTORIAL]
+    - tags: STRING (Optional, comma-separated tags)
+    - status: STRING (Default: "published") [published, draft, archived]
+    - isPinned: BOOLEAN (Default: false)
+    - views: INT (Default: 0)
+    - helpful: INT (Default: 0)
+    - createdBy: INT (Foreign Key → users.userid, Admin)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+15. USER_CHECKLISTS TABLE
+    Table Name: user_checklists
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: Personal scam prevention checklists
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - userId: INT (Foreign Key → users.userid)
+    - title: STRING (Checklist title)
+    - description: STRING (Optional, checklist description)
+    - isCompleted: BOOLEAN (Default: false)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+16. CHECKLIST_ITEMS TABLE
+    Table Name: checklist_items
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: Individual checklist tasks
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - checklistId: INT (Foreign Key → user_checklists.id)
+    - text: STRING (Item text)
+    - category: STRING (Default: "GENERAL") [SECURITY, AWARENESS, FINANCIAL, CUSTOM]
+    - isCompleted: BOOLEAN (Default: false)
+    - orderIndex: INT (Default: 0)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+17. QUESTIONNAIRES TABLE
+    Table Name: questionnaires
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: Legal officer created questionnaires
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - title: STRING (Questionnaire title)
+    - description: TEXT (Optional, questionnaire description)
+    - status: STRING (Default: "draft") [draft, published, archived]
+    - isActive: BOOLEAN (Default: false, whether users can answer)
+    - createdBy: INT (Foreign Key → users.userid, Legal Officer)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+18. QUESTIONNAIRE_QUESTIONS TABLE
+    Table Name: questionnaire_questions
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: Individual questions within questionnaires
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - questionnaireId: INT (Foreign Key → questionnaires.id)
+    - questionText: TEXT (Question content)
+    - questionType: STRING (Default: "text") [text, multiple_choice, checkbox, rating]
+    - options: TEXT (Optional, JSON string for multiple choice options)
+    - isRequired: BOOLEAN (Default: true)
+    - orderIndex: INT (Default: 0)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+19. QUESTIONNAIRE_RESPONSES TABLE
+    Table Name: questionnaire_responses
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: User responses to questionnaires
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - questionnaireId: INT (Foreign Key → questionnaires.id)
+    - userId: INT (Foreign Key → users.userid)
+    - status: STRING (Default: "in_progress") [in_progress, completed]
+    - startedAt: DATETIME (Auto: now())
+    - completedAt: DATETIME (Optional, when completed)
+    - createdAt: DATETIME (Auto: now())
+    - updatedAt: DATETIME (Auto: updated)
+
+20. QUESTIONNAIRE_ANSWERS TABLE
+    Table Name: questionnaire_answers
+    Primary Key: id (INT, AUTO_INCREMENT)
+    Purpose: Individual answers to specific questions
+    
+    Columns:
+    - id: INT (Primary Key, Auto Increment)
+    - questionId: INT (Foreign Key → questionnaire_questions.id)
+    - responseId: INT (Foreign Key → questionnaire_responses.id)
+    - answerText: TEXT (Optional, text answer)
+    - answerOptions: TEXT (Optional, JSON string for multiple choice answers)
+    - answerRating: INT (Optional, for rating questions)
+    - createdAt: DATETIME (Auto: now())
+
+================================================================================
+EXPLANATION: WHY QUESTIONNAIRE TABLES ARE SEPARATE
+================================================================================
+
+The questionnaire system uses 4 separate tables because they serve different purposes:
+
+1. QUESTIONNAIRES: The main questionnaire (like "Scam Awareness Survey")
+2. QUESTIONNAIRE_QUESTIONS: Individual questions within that questionnaire
+   (like "What is your age?", "Have you been scammed before?")
+3. QUESTIONNAIRE_RESPONSES: A user's attempt to answer a questionnaire
+   (like "User John started answering Scam Awareness Survey")
+4. QUESTIONNAIRE_ANSWERS: The actual answers to each question
+   (like "John answered '25' to age question, 'Yes' to scam question")
+
+This design allows:
+- One questionnaire to have multiple questions
+- One user to have multiple response attempts
+- One response to have multiple answers (one per question)
+- Flexibility to add/remove questions without affecting existing responses
+
+================================================================================
+FOREIGN KEY RELATIONSHIPS
+================================================================================
+
+USERS (Central Hub):
+- scam_reports.userId → users.userid
+- scam_alerts.createdBy → users.userid
+- scam_alerts.approvedBy → users.userid
+- legal_cases.createdBy → users.userid
+- legal_cases.approvedBy → users.userid
+- comments.userId → users.userid
+- evidence.caseId → legal_cases.id
+- legal_case_documents.uploadedBy → users.userid
+- notifications.createdBy → users.userid
+- role_change_requests.userId → users.userid
+- faqs.createdBy → users.userid
+- user_checklists.userId → users.userid
+- questionnaires.createdBy → users.userid
+- questionnaire_responses.userId → users.userid
+
+QUESTIONNAIRE SYSTEM:
+- questionnaire_questions.questionnaireId → questionnaires.id
+- questionnaire_responses.questionnaireId → questionnaires.id
+- questionnaire_responses.userId → users.userid
+- questionnaire_answers.questionId → questionnaire_questions.id
+- questionnaire_answers.responseId → questionnaire_responses.id
+
+CHECKLIST SYSTEM:
+- checklist_items.checklistId → user_checklists.id
+- user_checklists.userId → users.userid
+
+================================================================================
+USER ROLES SYSTEM
+================================================================================
+
+Role ID 1: ADMIN
+- Full system access
+- Can approve/reject everything
+- Can create notifications and FAQs
+- Can manage all users
+
+Role ID 2: LEGAL OFFICER
+- Can create scam alerts and legal cases
+- Can upload documents and evidence
+- Can create questionnaires
+- Can manage their own content
+
+Role ID 3: REGULAR USER
+- Can report scams
+- Can answer questionnaires
+- Can view approved content
+- Can request role upgrades
+
+================================================================================
+STATUS ENUMS
+================================================================================
+
+Scam Reports: pending → approved/rejected
+Scam Alerts: pending → approved/rejected
+Legal Cases: pending → approved → rejected/closed
+Role Change Requests: pending → approved/rejected
+Questionnaire Responses: in_progress → completed
+Notifications: active → inactive/expired
+FAQs: published → draft/archived
+
+================================================================================

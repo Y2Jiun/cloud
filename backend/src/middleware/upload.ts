@@ -1,49 +1,86 @@
-import multer from 'multer';
-import { Request } from 'express';
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
-// Configure multer for memory storage
-const storage = multer.memoryStorage();
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, "../../uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-// File filter function
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Check if file is an image
-  if (file.mimetype.startsWith('image/')) {
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+  },
+});
+
+// File filter to only allow specific file types
+const fileFilter = (
+  req: any,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  // Allow PDF and Word documents
+  const allowedTypes = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed!'));
+    cb(
+      new Error("Invalid file type. Only PDF and Word documents are allowed.")
+    );
   }
 };
 
 // Configure multer
 export const upload = multer({
-  storage,
-  fileFilter,
+  storage: storage,
+  fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
 
 // Error handling for multer
-export const handleMulterError = (error: any, req: Request, res: any, next: any) => {
+export const handleMulterError = (
+  error: any,
+  req: any,
+  res: any,
+  next: any
+) => {
   if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
+    if (error.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
         success: false,
-        error: 'File too large. Maximum size is 5MB.'
+        error: "File too large. Maximum size is 10MB.",
       });
     }
-    if (error.code === 'LIMIT_FILE_COUNT') {
+    if (error.code === "LIMIT_FILE_COUNT") {
       return res.status(400).json({
         success: false,
-        error: 'Too many files. Maximum is 1 file.'
+        error: "Too many files. Maximum is 1 file.",
       });
     }
   }
-  
-  if (error.message === 'Only image files are allowed!') {
+
+  if (
+    error.message ===
+    "Invalid file type. Only PDF and Word documents are allowed."
+  ) {
     return res.status(400).json({
       success: false,
-      error: 'Only image files are allowed!'
+      error: "Invalid file type. Only PDF and Word documents are allowed.",
     });
   }
 

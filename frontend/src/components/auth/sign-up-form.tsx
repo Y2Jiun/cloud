@@ -15,6 +15,8 @@ import Link from "@mui/material/Link";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
+import { EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { Controller, useForm } from "react-hook-form";
 import { z as zod } from "zod";
 
@@ -48,6 +50,7 @@ export function SignUpForm(): React.JSX.Element {
 	const { checkSession } = useUser();
 
 	const [isPending, setIsPending] = React.useState<boolean>(false);
+	const [showPassword, setShowPassword] = React.useState<boolean>(false);
 
 	const {
 		control,
@@ -57,6 +60,8 @@ export function SignUpForm(): React.JSX.Element {
 		setValue,
 		formState: { errors },
 	} = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
+
+	const handleClickShowPassword = () => setShowPassword((show) => !show);
 
 	const onSubmit = React.useCallback(
 		async (values: Values): Promise<void> => {
@@ -146,7 +151,22 @@ export function SignUpForm(): React.JSX.Element {
 						render={({ field }) => (
 							<FormControl error={Boolean(errors.password)}>
 								<InputLabel>Password</InputLabel>
-								<OutlinedInput {...field} label="Password" type="password" />
+								<OutlinedInput
+									{...field}
+									label="Password"
+									type={showPassword ? "text" : "password"}
+									endAdornment={
+										showPassword ? (
+											<EyeIcon cursor="pointer" fontSize="var(--icon-fontSize-md)" onClick={handleClickShowPassword} />
+										) : (
+											<EyeSlashIcon
+												cursor="pointer"
+												fontSize="var(--icon-fontSize-md)"
+												onClick={handleClickShowPassword}
+											/>
+										)
+									}
+								/>
 								{errors.password ? <FormHelperText>{errors.password.message}</FormHelperText> : null}
 							</FormControl>
 						)}

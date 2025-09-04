@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,17 +8,31 @@ datasource db {
 }
 
 model User {
-  userid     Int      @id @default(autoincrement())
-  username   String   @unique
-  name       String?
-  email      String   @unique
-  password   String
-  profilepic String?
-  contact    String?
-  roles      Int      @default(3)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  last_login DateTime?
+  userid        Int            @id @default(autoincrement())
+  username      String         @unique
+  name          String?
+  email         String         @unique
+  password      String
+  profilepic    String?
+  contact       String?
+  roles         Int            @default(3)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  last_login    DateTime?
+  comments      Comment[]
+  notifications Notification[]
+  scamReports   ScamReport[]
+  roleChangeRequests RoleChangeRequest[]
+  faqs          FAQ[]
+  scamAlertsCreated ScamAlert[] @relation("ScamAlertCreator")
+  scamAlertsApproved ScamAlert[] @relation("ScamAlertApprover")
+  legalCasesCreated LegalCase[] @relation("LegalCaseCreator")
+  legalCasesApproved LegalCase[] @relation("LegalCaseApprover")
+  legalCaseDocuments LegalCaseDocument[] @relation("LegalCaseDocumentUploader")
+  checklists    UserChecklist[]
+  notificationPreferences UserNotificationPreference[] @relation("UserNotificationPreferences")
+  questionnairesCreated Questionnaire[] @relation("QuestionnaireCreator")
+  questionnaireResponses QuestionnaireResponse[] @relation("QuestionnaireRespondent")
 
   @@map("users")
 }
@@ -55,11 +66,331 @@ model PasswordResetOtp {
   id        String   @id @default(cuid())
   email     String
   otp       String
-  token     String?  // Reset token generated after OTP verification
+  token     String?
   expiresAt DateTime
   verified  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("password_reset_otps")
+}
+
+model ScamReport {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String   @db.Text
+  scammerInfo String   @db.Text
+  platform    String
+  status      String   @default("pending")
+  adminNotes  String?  @db.Text // Admin notes for rejected reports
+  userId      Int
+  legalCaseId Int?     // Optional link to legal case
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [userid])
+  legalCase   LegalCase? @relation(fields: [legalCaseId], references: [id])
+
+  @@index([userId], map: "scam_reports_userId_fkey")
+  @@index([legalCaseId], map: "scam_reports_legalCaseId_fkey")
+  @@map("scam_reports")
+}
+
+model ScamAlert {
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String    @db.Text
+  severity      String    @default("MEDIUM") // HIGH, MEDIUM, LOW
+  targetAudience String   @default("ALL") // ALL, SPECIFIC_GROUPS
+  status        String    @default("pending") // pending, approved, rejected
+  adminNotes    String?   @db.Text // Admin feedback when rejecting
+  isActive      Boolean   @default(true)
+  expiresAt     DateTime?
+  createdBy     Int      // Legal Officer ID
+  approvedBy    Int?     // Admin ID (if approved)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  createdByUser User     @relation("ScamAlertCreator", fields: [createdBy], references: [userid])
+  approvedByUser User?   @relation("ScamAlertApprover", fields: [approvedBy], references: [userid])
+  comments      Comment[]
+  
+  @@index([createdBy], map: "scam_alerts_createdBy_fkey")
+  @@index([approvedBy], map: "scam_alerts_approvedBy_fkey")
+  @@index([status], map: "scam_alerts_status_fkey")
+  @@map("scam_alerts")
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  content   String    @db.Text
+  status    String    @default("pending")
+  userId    Int
+  alertId   Int?      // Optional link to scam alert
+  caseId    Int?      // Optional link to legal case
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  // Relations
+  alert     ScamAlert? @relation(fields: [alertId], references: [id])
+  legalCase LegalCase? @relation(fields: [caseId], references: [id])
+  user      User      @relation(fields: [userId], references: [userid])
+
+  @@index([alertId], map: "comments_alertId_fkey")
+  @@index([caseId], map: "comments_caseId_fkey")
+  @@index([userId], map: "comments_userId_fkey")
+  @@map("comments")
+}
+
+model LegalCase {
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String    @db.Text
+  caseNumber    String    @unique
+  status        String    @default("pending") // pending, approved, rejected, closed
+  priority      String    @default("MEDIUM") // HIGH, MEDIUM, LOW
+  adminNotes    String?   @db.Text // Admin feedback when rejecting
+  isActive      Boolean   @default(true)
+  createdBy     Int      // Legal Officer ID
+  approvedBy    Int?     // Admin ID (if approved)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  createdByUser User     @relation("LegalCaseCreator", fields: [createdBy], references: [userid])
+  approvedByUser User?   @relation("LegalCaseApprover", fields: [approvedBy], references: [userid])
+  scamReports   ScamReport[]
+  evidence      Evidence[]
+  comments      Comment[]
+  documents    LegalCaseDocument[] @relation("LegalCaseDocuments")
+  
+  @@index([createdBy], map: "legal_cases_createdBy_fkey")
+  @@index([approvedBy], map: "legal_cases_approvedBy_fkey")
+  @@index([status], map: "legal_cases_status_fkey")
+  @@map("legal_cases")
+}
+
+model Evidence {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  fileUrl     String?
+  caseId      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  case        LegalCase @relation(fields: [caseId], references: [id])
+
+  @@index([caseId], map: "evidence_caseId_fkey")
+  @@map("evidence")
+}
+
+// Document attachments for legal cases
+model LegalCaseDocument {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  fileName    String
+  fileUrl     String
+  fileType    String    // pdf, doc, docx, etc.
+  fileSize    Int       // in bytes
+  caseId      Int
+  uploadedBy  Int       // Legal Officer ID
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  case        LegalCase @relation("LegalCaseDocuments", fields: [caseId], references: [id])
+  uploadedByUser User   @relation("LegalCaseDocumentUploader", fields: [uploadedBy], references: [userid])
+  
+  @@index([caseId], map: "legal_case_documents_caseId_fkey")
+  @@index([uploadedBy], map: "legal_case_documents_uploadedBy_fkey")
+  @@map("legal_case_documents")
+}
+
+// Notification system table
+model Notification {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String   @db.Text
+  roles       Int      @default(3) // 1=User, 2=Legal Officer Only, 3=All Users
+  type        Int      @default(1) // 1=Notification, 2=Announcement, 3=Alert
+  priority    String   @default("medium") // low, medium, high, urgent
+  status      String   @default("active") // active, inactive, expired
+  expiresAt   DateTime?
+  createdBy   Int
+  createdByUser User   @relation(fields: [createdBy], references: [userid])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userPreferences UserNotificationPreference[] @relation("UserNotificationPreferences")
+
+  @@map("notifications")
+}
+
+// User notification preferences (for soft delete)
+model UserNotificationPreference {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  notificationId Int
+  isHidden       Boolean  @default(false)
+  hiddenAt       DateTime @default(now())
+  
+  // Relations
+  user           User         @relation("UserNotificationPreferences", fields: [userId], references: [userid])
+  notification   Notification  @relation("UserNotificationPreferences", fields: [notificationId], references: [id])
+  
+  @@unique([userId, notificationId])
+  @@index([userId], map: "user_notification_preferences_userId_fkey")
+  @@index([notificationId], map: "user_notification_preferences_notificationId_fkey")
+  @@map("user_notification_preferences")
+}
+
+// Role change request system
+model RoleChangeRequest {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  requestedRole Int     @default(2) // 2 = Legal Officer
+  status      String    @default("pending") // pending, approved, rejected
+  reason      String?   @db.Text // User's reason for requesting role change
+  adminNotes  String?   @db.Text // Admin's notes for approval/rejection
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [userid])
+
+  @@index([userId], map: "role_change_requests_userId_fkey")
+  @@map("role_change_requests")
+}
+
+model FAQ {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String    @db.Text
+  category    String    @default("GUIDE") // GUIDE, FAQ, TUTORIAL
+  tags        String?   // Comma-separated tags
+  status      String    @default("published") // published, draft, archived
+  isPinned    Boolean   @default(false)
+  views       Int       @default(0)
+  helpful     Int       @default(0)
+  createdBy   Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdByUser User    @relation(fields: [createdBy], references: [userid])
+
+  @@index([createdBy], map: "faqs_createdBy_fkey")
+  @@map("faqs")
+}
+
+// Personal Scam Prevention Checklist (User-only)
+model UserChecklist {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  title       String
+  description String?
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [userid])
+  items       ChecklistItem[]
+
+  @@index([userId], map: "user_checklists_userId_fkey")
+  @@map("user_checklists")
+}
+
+model ChecklistItem {
+  id           Int       @id @default(autoincrement())
+  checklistId  Int
+  text         String
+  category     String    @default("GENERAL") // SECURITY, AWARENESS, FINANCIAL, CUSTOM
+  isCompleted  Boolean   @default(false)
+  orderIndex   Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  checklist    UserChecklist @relation(fields: [checklistId], references: [id])
+
+  @@index([checklistId], map: "checklist_items_checklistId_fkey")
+  @@map("checklist_items")
+}
+
+// Questionnaire System for Legal Officers
+model Questionnaire {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?   @db.Text
+  status      String    @default("draft") // draft, published, archived
+  isActive    Boolean   @default(false) // Whether users can currently answer it
+  createdBy   Int       // Legal Officer who created it
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  createdByUser User    @relation("QuestionnaireCreator", fields: [createdBy], references: [userid])
+  questions    QuestionnaireQuestion[]
+  responses    QuestionnaireResponse[]
+
+  @@index([createdBy], map: "questionnaires_createdBy_fkey")
+  @@map("questionnaires")
+}
+
+model QuestionnaireQuestion {
+  id              Int       @id @default(autoincrement())
+  questionnaireId Int
+  questionText    String    @db.Text
+  questionType    String    @default("text") // text, multiple_choice, checkbox, rating
+  options         String?   @db.Text // JSON string for multiple choice options
+  isRequired      Boolean   @default(true)
+  orderIndex      Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
+  answers        QuestionnaireAnswer[]
+
+  @@index([questionnaireId], map: "questionnaire_questions_questionnaireId_fkey")
+  @@map("questionnaire_questions")
+}
+
+model QuestionnaireResponse {
+  id              Int       @id @default(autoincrement())
+  questionnaireId Int
+  userId          Int
+  status          String    @default("in_progress") // in_progress, completed
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
+  user            User      @relation("QuestionnaireRespondent", fields: [userId], references: [userid])
+  answers         QuestionnaireAnswer[]
+
+  @@index([questionnaireId], map: "questionnaire_responses_questionnaireId_fkey")
+  @@index([userId], map: "questionnaire_responses_userId_fkey")
+  @@map("questionnaire_responses")
+}
+
+model QuestionnaireAnswer {
+  id                    Int       @id @default(autoincrement())
+  questionId            Int
+  responseId            Int
+  answerText            String?   @db.Text
+  answerOptions         String?   @db.Text // JSON string for multiple choice answers
+  answerRating          Int?      // For rating questions
+  createdAt             DateTime  @default(now())
+  
+  // Relations
+  question              QuestionnaireQuestion @relation(fields: [questionId], references: [id])
+  response              QuestionnaireResponse @relation(fields: [responseId], references: [id])
+
+  @@index([questionId], map: "questionnaire_answers_questionId_fkey")
+  @@index([responseId], map: "questionnaire_answers_responseId_fkey")
+  @@map("questionnaire_answers")
 }

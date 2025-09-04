@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import { config } from "@/config";
 import { AccountDetailsForm } from "@/components/dashboard/account/account-details-form";
 import { AccountInfo } from "@/components/dashboard/account/account-info";
+import { RoleChangeRequest } from "@/components/dashboard/account/role-change-request";
 
 // export const metadata = { title: `Account | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -75,6 +76,18 @@ export default function Page(): React.JSX.Element {
 						previewImageUrl={previewImageUrl}
 						onImageSaved={handleImageSaved}
 					/>
+				</Grid>
+			</Grid>
+
+			{/* Role Change Request Section */}
+			<Grid container spacing={3}>
+				<Grid
+					size={{
+						lg: 12,
+						xs: 12,
+					}}
+				>
+					<RoleChangeRequest />
 				</Grid>
 			</Grid>
 		</Stack>

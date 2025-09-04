@@ -32,7 +32,8 @@ export function AccountInfo({ onImageSelect, previewImage }: AccountInfoProps): 
 		}
 	};
 
-	const displayImage = previewImage || user?.avatar || "/assets/avatar.png";
+	const displayImage =
+		previewImage || (user?.profilepic ? `http://localhost:5000${user.profilepic}` : undefined) || "/assets/avatar.png";
 
 	return (
 		<Card>

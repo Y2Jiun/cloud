@@ -107,5 +107,9 @@ Thumbs.db
 backend/prisma/migrations/
 backend/src/generated/
 
-# Uploads
-uploads/
+# Uploads (keep folder structure but ignore uploaded files)
+backend/uploads/*
+!backend/uploads/.gitkeep
+!backend/uploads/images/.gitkeep
+!backend/uploads/evidence/.gitkeep
+!backend/uploads/profiles/.gitkeep

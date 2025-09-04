@@ -154,6 +154,16 @@ class AuthClient {
 
 			// Transform backend user data to frontend User type
 			const backendUser = response.data;
+
+			// Construct full avatar URL if it's a relative path
+			let avatarUrl = backendUser.profilepic || backendUser.avatar || "/assets/avatar.png";
+			if (avatarUrl.startsWith("/api/uploads/")) {
+				// Convert relative path to full URL
+				// Backend returns: /api/uploads/profiles/filename.jpg
+				// We want: http://localhost:5000/api/uploads/profiles/filename.jpg
+				avatarUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000"}${avatarUrl}`;
+			}
+
 			const user: User = {
 				id: backendUser.userid?.toString() || backendUser.id,
 				name:
@@ -161,7 +171,8 @@ class AuthClient {
 					backendUser.username ||
 					`${backendUser.firstName || ""} ${backendUser.lastName || ""}`.trim(),
 				email: backendUser.email,
-				avatar: backendUser.profilepic || backendUser.avatar || "/assets/avatar.png",
+				avatar: avatarUrl,
+				profilepic: backendUser.profilepic,
 				username: backendUser.username,
 				roles: backendUser.roles,
 				contact: backendUser.contact,

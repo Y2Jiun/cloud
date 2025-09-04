@@ -43,16 +43,35 @@ export const getUsers = async (
           roles: true,
           created_at: true,
           updated_at: true,
+          roleChangeRequests: {
+            where: { status: "pending" },
+            select: {
+              id: true,
+              status: true,
+              reason: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1, // Get only the latest pending request
+          },
         },
         orderBy: { created_at: "desc" },
       }),
       prisma.user.count({ where }),
     ]);
 
+    // Transform users to include role change request info
+    const usersWithRoleRequests = users.map((user) => ({
+      ...user,
+      hasPendingRoleRequest: user.roleChangeRequests.length > 0,
+      pendingRoleRequest: user.roleChangeRequests[0] || null,
+      roleChangeRequests: undefined, // Remove the array from response
+    }));
+
     res.json({
       success: true,
       data: {
-        users,
+        users: usersWithRoleRequests,
         pagination: {
           total,
           page: Number(page),

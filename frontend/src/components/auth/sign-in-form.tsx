@@ -36,7 +36,7 @@ export function SignInForm(): React.JSX.Element {
 
 	const { checkSession } = useUser();
 
-	const [showPassword, setShowPassword] = React.useState<boolean>();
+	const [showPassword, setShowPassword] = React.useState<boolean>(false);
 
 	const [isPending, setIsPending] = React.useState<boolean>(false);
 
@@ -54,7 +54,7 @@ export function SignInForm(): React.JSX.Element {
 			const { error } = await authClient.signInWithPassword(values);
 
 			if (error) {
-				setError("root", { type: "server", message: error });
+				setError("root", { type: "server", message: "Invalid email or password" });
 				setIsPending(false);
 				return;
 			}

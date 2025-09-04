@@ -1,161 +1,139 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Starting database seeding...");
 
-  // Create admin user
-  const hashedPassword = await bcrypt.hash("admin123", 12);
-
+  // Create sample users if they don't exist
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@example.com" },
     update: {},
     create: {
       email: "admin@example.com",
-      password: hashedPassword,
       username: "admin",
-      profilepic:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+      name: "Admin User",
+      password: "$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu/1m", // password: admin123
+      roles: 1, // admin
+      contact: "+1234567890",
     },
   });
 
-  console.log("✅ Created admin user:", adminUser.email);
-
-  // Create demo user
-  const demoPassword = await bcrypt.hash("demo123", 12);
-
-  const demoUser = await prisma.user.upsert({
-    where: { email: "demo@example.com" },
+  const regularUser = await prisma.user.upsert({
+    where: { email: "user@example.com" },
     update: {},
     create: {
-      email: "demo@example.com",
-      password: demoPassword,
-      username: "demo",
-      profilepic:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
+      email: "user@example.com",
+      username: "user",
+      name: "Regular User",
+      password: "$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu/1m", // password: user123
+      roles: 3, // user
+      contact: "+1234567891",
     },
   });
 
-  console.log("✅ Created demo user:", demoUser.email);
+  console.log("✅ Users created/updated");
 
-  // Create sample customers
-  const customers = [
+  // Create sample FAQs
+  const sampleFAQs = [
     {
-      name: "John Smith",
-      email: "john.smith@example.com",
-      phone: "+1-555-0123",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      address: {
-        street: "123 Main St",
-        city: "New York",
-        state: "NY",
-        country: "USA",
-        zipCode: "10001",
-      },
+      title: "How to Report a Scam",
+      content:
+        'To report a scam, navigate to the Scam Reports section and click "Create Report". Fill in all required information including the scammer\'s details, platform used, and any evidence you may have. Your report will be reviewed by our team.',
+      category: "GUIDE",
+      tags: "scam,report,guide",
+      status: "published",
+      isPinned: true,
+      createdBy: adminUser.userid,
     },
     {
-      name: "Sarah Johnson",
-      email: "sarah.johnson@example.com",
-      phone: "+1-555-0124",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      address: {
-        street: "456 Oak Ave",
-        city: "Los Angeles",
-        state: "CA",
-        country: "USA",
-        zipCode: "90210",
-      },
+      title: "What Information Should I Include in a Scam Report?",
+      content:
+        "When reporting a scam, include as much detail as possible: scammer's name, contact information, platform used, amount lost, screenshots of conversations, and any other relevant evidence. The more information you provide, the better we can help.",
+      category: "FAQ",
+      tags: "scam,information,evidence",
+      status: "published",
+      isPinned: false,
+      createdBy: adminUser.userid,
     },
     {
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-      phone: "+1-555-0125",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      address: {
-        street: "789 Pine St",
-        city: "Chicago",
-        state: "IL",
-        country: "USA",
-        zipCode: "60601",
-      },
+      title: "How Long Does It Take to Review a Report?",
+      content:
+        "Our team typically reviews scam reports within 24-48 hours. Complex cases may take longer. You will receive notifications about the status of your report.",
+      category: "FAQ",
+      tags: "timeline,review,process",
+      status: "published",
+      isPinned: false,
+      createdBy: adminUser.userid,
     },
     {
-      name: "Emily Davis",
-      email: "emily.davis@example.com",
-      phone: "+1-555-0126",
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
-      address: {
-        street: "321 Elm St",
-        city: "Houston",
-        state: "TX",
-        country: "USA",
-        zipCode: "77001",
-      },
+      title: "Understanding Scam Alerts",
+      content:
+        "Scam alerts are warnings about new or trending scams in your area. These are created by our team based on verified reports and help protect the community from similar scams.",
+      category: "TUTORIAL",
+      tags: "alerts,warnings,protection",
+      status: "published",
+      isPinned: false,
+      createdBy: adminUser.userid,
     },
     {
-      name: "David Wilson",
-      email: "david.wilson@example.com",
-      phone: "+1-555-0127",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      address: {
-        street: "654 Maple Ave",
-        city: "Phoenix",
-        state: "AZ",
-        country: "USA",
-        zipCode: "85001",
-      },
+      title: "How to Stay Safe Online",
+      content:
+        "Always verify the identity of people you interact with online. Never share personal information, passwords, or financial details with unknown individuals. Use strong passwords and enable two-factor authentication when possible.",
+      category: "GUIDE",
+      tags: "safety,online,security",
+      status: "published",
+      isPinned: true,
+      createdBy: adminUser.userid,
     },
   ];
 
-  for (const customerData of customers) {
-    const customer = await prisma.customer.upsert({
-      where: { email: customerData.email },
-      update: {},
-      create: customerData,
+  for (const faqData of sampleFAQs) {
+    await prisma.fAQ.create({
+      data: faqData,
     });
-    console.log("✅ Created customer:", customer.name);
   }
 
-  // Create sample activities
-  const activities = [
+  console.log("✅ Sample FAQs created");
+
+  // Create sample scam reports
+  const sampleScamReports = [
     {
-      type: "user_registered",
-      description: "New user registered: Demo User",
-      userId: demoUser.userid.toString(),
+      title: "Fake Investment Opportunity",
+      description:
+        "Someone contacted me claiming to be a financial advisor offering high returns on cryptocurrency investments. They asked for an initial investment of $5000.",
+      scammerInfo:
+        "Name: John Smith, Phone: +1234567890, Email: john.smith@fakeinvestment.com",
+      platform: "WhatsApp",
+      status: "pending",
+      userId: regularUser.userid,
     },
     {
-      type: "customer_created",
-      description: "New customer added: John Smith",
-    },
-    {
-      type: "customer_created",
-      description: "New customer added: Sarah Johnson",
+      title: "Online Shopping Scam",
+      description:
+        "I found a website selling electronics at extremely low prices. After placing an order and paying, the website disappeared and I never received the items.",
+      scammerInfo:
+        "Website: cheap-electronics-now.com, Email: support@cheap-electronics-now.com",
+      platform: "Website",
+      status: "pending",
+      userId: regularUser.userid,
     },
   ];
 
-  for (const activityData of activities) {
-    const activity = await prisma.activity.create({
-      data: activityData,
+  for (const reportData of sampleScamReports) {
+    await prisma.scamReport.create({
+      data: reportData,
     });
-    console.log("✅ Created activity:", activity.description);
   }
+
+  console.log("✅ Sample scam reports created");
 
   console.log("🎉 Database seeding completed!");
-  console.log("\n📝 Login credentials:");
-  console.log("Admin: admin@example.com / admin123");
-  console.log("Demo: demo@example.com / demo123");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error during seeding:", e);
+    console.error("❌ Seeding failed:", e);
     process.exit(1);
   })
   .finally(async () => {

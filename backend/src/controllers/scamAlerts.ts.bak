@@ -1,0 +1,252 @@
+import { Request, Response } from "express";
+import { prisma } from "../index";
+import { AuthRequest } from "../middleware/auth";
+
+// Create a new scam alert (Admin only)
+export const createScamAlert = async (
+  req: AuthRequest,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { title, content } = req.body;
+    const adminId = req.user?.id;
+    const userRole = req.user?.roles;
+
+    if (!adminId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    if (userRole !== 1) {
+      return res.status(403).json({ error: "Access denied. Admin only." });
+    }
+
+    const scamAlert = await prisma.scamAlert.create({
+      data: {
+        title,
+        content,
+        adminId,
+      },
+      include: {
+        admin: {
+          select: {
+            userid: true,
+            username: true,
+            name: true,
+          },
+        },
+        comments: {
+          include: {
+            user: {
+              select: {
+                userid: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({
+      message: "Scam alert created successfully",
+      scamAlert,
+    });
+  } catch (error) {
+    console.error("Error creating scam alert:", error);
+    return res.status(500).json({ error: "Failed to create scam alert" });
+  }
+};
+
+// Get all scam alerts
+export const getScamAlerts = async (
+  req: AuthRequest,
+  res: Response
+): Promise<Response> => {
+  try {
+    const scamAlerts = await prisma.scamAlert.findMany({
+      include: {
+        admin: {
+          select: {
+            userid: true,
+            username: true,
+            name: true,
+          },
+        },
+        comments: {
+          where: {
+            status: "approved", // Only show approved comments
+          },
+          include: {
+            user: {
+              select: {
+                userid: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json({ scamAlerts });
+  } catch (error) {
+    console.error("Error fetching scam alerts:", error);
+    return res.status(500).json({ error: "Failed to fetch scam alerts" });
+  }
+};
+
+// Get a single scam alert
+export const getScamAlert = async (
+  req: AuthRequest,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { id } = req.params;
+
+    const scamAlert = await prisma.scamAlert.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        admin: {
+          select: {
+            userid: true,
+            username: true,
+            name: true,
+          },
+        },
+        comments: {
+          where: {
+            status: "approved", // Only show approved comments
+          },
+          include: {
+            user: {
+              select: {
+                userid: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+    });
+
+    if (!scamAlert) {
+      return res.status(404).json({ error: "Scam alert not found" });
+    }
+
+    return res.json({ scamAlert });
+  } catch (error) {
+    console.error("Error fetching scam alert:", error);
+    return res.status(500).json({ error: "Failed to fetch scam alert" });
+  }
+};
+
+// Update scam alert (Admin only)
+export const updateScamAlert = async (
+  req: AuthRequest,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+    const userId = req.user?.id;
+    const userRole = req.user?.roles;
+
+    if (userRole !== 1) {
+      return res.status(403).json({ error: "Access denied. Admin only." });
+    }
+
+    const existingAlert = await prisma.scamAlert.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!existingAlert) {
+      return res.status(404).json({ error: "Scam alert not found" });
+    }
+
+    const updatedAlert = await prisma.scamAlert.update({
+      where: { id: parseInt(id) },
+      data: { title, content },
+      include: {
+        admin: {
+          select: {
+            userid: true,
+            username: true,
+            name: true,
+          },
+        },
+        comments: {
+          where: {
+            status: "approved",
+          },
+          include: {
+            user: {
+              select: {
+                userid: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return res.json({
+      message: "Scam alert updated successfully",
+      scamAlert: updatedAlert,
+    });
+  } catch (error) {
+    console.error("Error updating scam alert:", error);
+    return res.status(500).json({ error: "Failed to update scam alert" });
+  }
+};
+
+// Delete scam alert (Admin only)
+export const deleteScamAlert = async (
+  req: AuthRequest,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.roles;
+
+    if (userRole !== 1) {
+      return res.status(403).json({ error: "Access denied. Admin only." });
+    }
+
+    const existingAlert = await prisma.scamAlert.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!existingAlert) {
+      return res.status(404).json({ error: "Scam alert not found" });
+    }
+
+    // Delete associated comments first
+    await prisma.comment.deleteMany({
+      where: { alertId: parseInt(id) },
+    });
+
+    // Then delete the alert
+    await prisma.scamAlert.delete({
+      where: { id: parseInt(id) },
+    });
+
+    return res.json({ message: "Scam alert deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting scam alert:", error);
+    return res.status(500).json({ error: "Failed to delete scam alert" });
+  }
+};

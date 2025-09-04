@@ -2,23 +2,48 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import {
   validateImageFile,
-  uploadToCloudinary,
-  deleteFromCloudinary,
-  configureCloudinary,
+  uploadToLocal,
+  deleteFromLocal,
+  ensureUploadDirs,
+  uploadFromUrl,
 } from "../utils/imageUtils";
 
-// Configure Cloudinary
-configureCloudinary();
+// Ensure upload directories exist
+ensureUploadDirs();
 
 export const uploadImage = async (
   req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
+    const { folder, imageUrl } = req.body;
+
+    // Handle URL upload
+    if (imageUrl) {
+      const uploadResult = await uploadFromUrl(imageUrl, {
+        folder: folder as "images" | "evidence" | "profiles",
+      });
+
+      if (!uploadResult) {
+        res.status(400).json({
+          success: false,
+          error: "Failed to upload image from URL",
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: uploadResult,
+      });
+      return;
+    }
+
+    // Handle file upload
     if (!req.file) {
       res.status(400).json({
         success: false,
-        error: "No file uploaded",
+        error: "No file uploaded or URL provided",
       });
       return;
     }
@@ -33,8 +58,10 @@ export const uploadImage = async (
       return;
     }
 
-    // Upload to Cloudinary using utility function
-    const uploadResult = await uploadToCloudinary(req.file);
+    // Upload to local storage
+    const uploadResult = await uploadToLocal(req.file, {
+      folder: folder as "images" | "evidence" | "profiles",
+    });
 
     res.json({
       success: true,
@@ -54,18 +81,22 @@ export const deleteImage = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { publicId } = req.params;
+    const { filename } = req.params;
+    const { folder } = req.query;
 
-    if (!publicId) {
+    if (!filename) {
       res.status(400).json({
         success: false,
-        error: "Public ID is required",
+        error: "Filename is required",
       });
       return;
     }
 
-    // Delete from Cloudinary using utility function
-    const success = await deleteFromCloudinary(publicId);
+    // Delete from local storage
+    const success = await deleteFromLocal(
+      filename,
+      folder as "images" | "evidence" | "profiles"
+    );
 
     if (success) {
       res.json({
@@ -75,7 +106,7 @@ export const deleteImage = async (
     } else {
       res.status(400).json({
         success: false,
-        error: "Failed to delete image",
+        error: "Failed to delete image or file not found",
       });
     }
   } catch (error) {

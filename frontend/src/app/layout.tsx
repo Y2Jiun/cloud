@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { Viewport } from "next";
+import { Toaster } from "react-hot-toast";
 
 import "@/styles/global.css";
 
@@ -21,7 +22,19 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
 				<LocalizationProvider>
 					<UserProvider>
 						<SettingsProvider>
-							<I18nProvider>{children}</I18nProvider>
+							<I18nProvider>
+								{children}
+								<Toaster
+									position="top-right"
+									toastOptions={{
+										duration: 4000,
+										style: {
+											background: "#363636",
+											color: "#fff",
+										},
+									}}
+								/>
+							</I18nProvider>
 						</SettingsProvider>
 					</UserProvider>
 				</LocalizationProvider>

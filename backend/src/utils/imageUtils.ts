@@ -1,168 +1,242 @@
-import { v2 as cloudinary } from 'cloudinary';
+import fs from "fs";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 
-// Configure Cloudinary (this should be called once at app startup)
-export const configureCloudinary = () => {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+// Configure local storage paths
+const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+const IMAGES_DIR = path.join(UPLOAD_DIR, "images");
+const EVIDENCE_DIR = path.join(UPLOAD_DIR, "evidence");
+const PROFILES_DIR = path.join(UPLOAD_DIR, "profiles");
+
+// Ensure upload directories exist
+export const ensureUploadDirs = () => {
+  [UPLOAD_DIR, IMAGES_DIR, EVIDENCE_DIR, PROFILES_DIR].forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   });
 };
 
+// Get upload directory path
+export const getUploadDir = (
+  folder: "images" | "evidence" | "profiles" = "images"
+): string => {
+  switch (folder) {
+    case "evidence":
+      return EVIDENCE_DIR;
+    case "profiles":
+      return PROFILES_DIR;
+    default:
+      return IMAGES_DIR;
+  }
+};
+
 // Validate image file
-export const validateImageFile = (file: Express.Multer.File): { isValid: boolean; error?: string } => {
+export const validateImageFile = (
+  file: Express.Multer.File
+): { isValid: boolean; error?: string } => {
   // Check if file exists
   if (!file) {
-    return { isValid: false, error: 'No file provided' };
+    return { isValid: false, error: "No file provided" };
   }
 
   // Check file size (5MB limit)
   const maxSize = 5 * 1024 * 1024; // 5MB in bytes
   if (file.size > maxSize) {
-    return { isValid: false, error: 'File size exceeds 5MB limit' };
+    return { isValid: false, error: "File size exceeds 5MB limit" };
   }
 
-  // Check MIME type
+  // Check MIME type - REMOVED SVG support for security
   const allowedMimeTypes = [
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml'
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
   ];
 
   if (!allowedMimeTypes.includes(file.mimetype)) {
-    return { isValid: false, error: 'Invalid file type. Only images are allowed.' };
+    return {
+      isValid: false,
+      error:
+        "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.",
+    };
   }
 
   return { isValid: true };
 };
 
-// Upload image to Cloudinary
-export const uploadToCloudinary = async (
+// Upload image to local storage
+export const uploadToLocal = async (
   file: Express.Multer.File,
   options: {
-    folder?: string;
-    width?: number;
-    height?: number;
-    quality?: string;
+    folder?: "images" | "evidence" | "profiles";
   } = {}
 ): Promise<{
   url: string;
-  publicId: string;
-  format: string;
-  width: number;
-  height: number;
+  filename: string;
+  originalName: string;
+  size: number;
+  mimetype: string;
+  path: string;
 }> => {
-  const {
-    folder = 'dashboard-app',
-    width = 800,
-    height = 600,
-    quality = 'auto'
-  } = options;
+  const { folder = "images" } = options;
 
-  // Convert buffer to base64
-  const fileStr = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+  // Ensure directories exist
+  ensureUploadDirs();
 
-  // Upload to Cloudinary
-  const uploadResponse = await cloudinary.uploader.upload(fileStr, {
-    folder,
-    resource_type: 'image',
-    transformation: [
-      { width, height, crop: 'limit' },
-      { quality },
-      { fetch_format: 'auto' }
-    ]
-  });
+  // Generate unique filename
+  const fileExtension = path.extname(file.originalname);
+  const filename = `${uuidv4()}${fileExtension}`;
+
+  // Get upload directory
+  const uploadDir = getUploadDir(folder);
+  const filePath = path.join(uploadDir, filename);
+
+  // Save file to local storage
+  fs.writeFileSync(filePath, file.buffer);
+
+  // Generate URL for accessing the file
+  const url = `/api/uploads/${folder}/${filename}`;
 
   return {
-    url: uploadResponse.secure_url,
-    publicId: uploadResponse.public_id,
-    format: uploadResponse.format,
-    width: uploadResponse.width,
-    height: uploadResponse.height
+    url,
+    filename,
+    originalName: file.originalname,
+    size: file.size,
+    mimetype: file.mimetype,
+    path: filePath,
   };
 };
 
-// Delete image from Cloudinary
-export const deleteFromCloudinary = async (publicId: string): Promise<boolean> => {
+// Delete image from local storage
+export const deleteFromLocal = async (
+  filename: string,
+  folder: "images" | "evidence" | "profiles" = "images"
+): Promise<boolean> => {
   try {
-    const result = await cloudinary.uploader.destroy(publicId);
-    return result.result === 'ok';
+    const uploadDir = getUploadDir(folder);
+    const filePath = path.join(uploadDir, filename);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return true;
+    }
+    return false;
   } catch (error) {
-    console.error('Error deleting image from Cloudinary:', error);
+    console.error("Error deleting image from local storage:", error);
     return false;
   }
 };
 
-// Generate optimized image URL
-export const generateOptimizedUrl = (
-  publicId: string,
-  options: {
-    width?: number;
-    height?: number;
-    quality?: string;
-    format?: string;
-    crop?: string;
-  } = {}
+// Generate local image URL
+export const generateLocalUrl = (
+  filename: string,
+  folder: "images" | "evidence" | "profiles" = "images"
 ): string => {
-  const {
-    width,
-    height,
-    quality = 'auto',
-    format = 'auto',
-    crop = 'fill'
-  } = options;
-
-  let transformation = `q_${quality},f_${format}`;
-  
-  if (width && height) {
-    transformation += `,w_${width},h_${height},c_${crop}`;
-  } else if (width) {
-    transformation += `,w_${width}`;
-  } else if (height) {
-    transformation += `,h_${height}`;
-  }
-
-  return `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${transformation}/${publicId}`;
+  return `/api/uploads/${folder}/${filename}`;
 };
 
-// Get image info from Cloudinary
-export const getImageInfo = async (publicId: string) => {
+// Get local image info
+export const getLocalImageInfo = async (
+  filename: string,
+  folder: "images" | "evidence" | "profiles" = "images"
+) => {
   try {
-    const result = await cloudinary.api.resource(publicId);
+    const uploadDir = getUploadDir(folder);
+    const filePath = path.join(uploadDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+
+    const stats = fs.statSync(filePath);
+    const fileExtension = path.extname(filename);
+
     return {
-      publicId: result.public_id,
-      format: result.format,
-      width: result.width,
-      height: result.height,
-      bytes: result.bytes,
-      url: result.secure_url,
-      createdAt: result.created_at
+      filename,
+      originalPath: filePath,
+      size: stats.size,
+      format: fileExtension.slice(1), // Remove the dot
+      url: generateLocalUrl(filename, folder),
+      createdAt: stats.birthtime,
+      modifiedAt: stats.mtime,
     };
   } catch (error) {
-    console.error('Error getting image info:', error);
+    console.error("Error getting local image info:", error);
     return null;
   }
 };
 
-// Batch delete images
-export const batchDeleteFromCloudinary = async (publicIds: string[]): Promise<{
+// Batch delete local images
+export const batchDeleteFromLocal = async (
+  filenames: string[],
+  folder: "images" | "evidence" | "profiles" = "images"
+): Promise<{
   deleted: string[];
   failed: string[];
 }> => {
   const deleted: string[] = [];
   const failed: string[] = [];
 
-  for (const publicId of publicIds) {
-    const success = await deleteFromCloudinary(publicId);
+  for (const filename of filenames) {
+    const success = await deleteFromLocal(filename, folder);
     if (success) {
-      deleted.push(publicId);
+      deleted.push(filename);
     } else {
-      failed.push(publicId);
+      failed.push(filename);
     }
   }
 
   return { deleted, failed };
+};
+
+// Upload image from URL (for your requirement)
+export const uploadFromUrl = async (
+  imageUrl: string,
+  options: {
+    folder?: "images" | "evidence" | "profiles";
+    filename?: string;
+  } = {}
+): Promise<{
+  url: string;
+  filename: string;
+  size: number;
+  mimetype: string;
+} | null> => {
+  try {
+    const { folder = "images", filename } = options;
+
+    // Fetch image from URL
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+
+    // Generate filename if not provided
+    const fileExtension = contentType.split("/")[1] || "jpg";
+    const finalFilename = filename || `${uuidv4()}.${fileExtension}`;
+
+    // Ensure directories exist
+    ensureUploadDirs();
+
+    // Get upload directory and save file
+    const uploadDir = getUploadDir(folder);
+    const filePath = path.join(uploadDir, finalFilename);
+
+    fs.writeFileSync(filePath, buffer);
+
+    return {
+      url: generateLocalUrl(finalFilename, folder),
+      filename: finalFilename,
+      size: buffer.length,
+      mimetype: contentType,
+    };
+  } catch (error) {
+    console.error("Error uploading from URL:", error);
+    return null;
+  }
 };

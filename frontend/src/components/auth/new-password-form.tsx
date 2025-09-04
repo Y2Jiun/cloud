@@ -4,14 +4,15 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import FormControl from "@mui/material/FormControl";
 import FormHelperText from "@mui/material/FormHelperText";
 import InputLabel from "@mui/material/InputLabel";
 import OutlinedInput from "@mui/material/OutlinedInput";
+import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
 import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { Controller, useForm } from "react-hook-form";
@@ -40,6 +41,10 @@ export function NewPasswordForm(): React.JSX.Element {
 	const [showPassword, setShowPassword] = React.useState<boolean>(false);
 	const [showConfirmPassword, setShowConfirmPassword] = React.useState<boolean>(false);
 	const [token, setToken] = React.useState<string>("");
+	const [successOpen, setSuccessOpen] = React.useState<boolean>(false);
+	const [successMessage] = React.useState<string>(
+		"Password updated successfully! Please sign in with your new password."
+	);
 
 	const {
 		control,
@@ -80,9 +85,11 @@ export function NewPasswordForm(): React.JSX.Element {
 			sessionStorage.removeItem("reset-email");
 			sessionStorage.removeItem("reset-token");
 
-			// Show success message and redirect to sign in
-			alert("Password updated successfully! Please sign in with your new password.");
-			router.push(paths.auth.signIn);
+			// Show success snackbar and redirect shortly after
+			setSuccessOpen(true);
+			setTimeout(() => {
+				router.push(paths.auth.signIn);
+			}, 1500);
 		},
 		[token, setError, router]
 	);
@@ -155,9 +162,7 @@ export function NewPasswordForm(): React.JSX.Element {
 									label="Confirm New Password"
 									type={showConfirmPassword ? "text" : "password"}
 								/>
-								{errors.confirmPassword ? (
-									<FormHelperText>{errors.confirmPassword.message}</FormHelperText>
-								) : null}
+								{errors.confirmPassword ? <FormHelperText>{errors.confirmPassword.message}</FormHelperText> : null}
 							</FormControl>
 						)}
 					/>
@@ -182,6 +187,13 @@ export function NewPasswordForm(): React.JSX.Element {
 					</Button>
 				</Stack>
 			</form>
+
+			{/* Success Snackbar */}
+			<Snackbar open={successOpen} autoHideDuration={1500} anchorOrigin={{ vertical: "top", horizontal: "center" }}>
+				<Alert severity="success" variant="filled">
+					{successMessage}
+				</Alert>
+			</Snackbar>
 		</Stack>
 	);
 }
